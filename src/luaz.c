@@ -55,9 +55,10 @@ int zipentry_close(lua_State *L)
 
   // release zip file
   if (zent->zipref != LUA_NOREF) {
+    p_zipfile zip;
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, zent->zipref);
-    p_zipfile zip = (p_zipfile)luaL_checkudata(L, -1, "LuaZ:UnZip");
+    zip = (p_zipfile)luaL_checkudata(L, -1, "LuaZ:UnZip");
 
     if (zip->uf != NULL && zip->current_nameref == zent->nameref) {
       unzCloseCurrentFile(zip->uf);
@@ -88,7 +89,7 @@ int zipfile_open(lua_State* L)
 #        endif
 
 #        ifdef USEWIN32IOAPI
-    fill_win32_filefuncA(&ffunc);
+    fill_win32_filefunc(&ffunc);
     uf = unzOpen2(zipname,&ffunc);
 #        else
     uf = unzOpen(zipname);
@@ -158,7 +159,7 @@ int zipentry_open(lua_State* L)
   p_zipfile zip = (p_zipfile)luaL_checkudata(L, 1, "LuaZ:UnZip");
   const char* filename = luaL_checkstring(L, 2);
   int ignorecase = luaL_optint(L, 3, 0);
-
+  p_zipentry zent;
   int err;
 
   if (zip->uf == NULL) {
@@ -184,7 +185,7 @@ int zipentry_open(lua_State* L)
   err = unzOpenCurrentFile(zip->uf);
   if (err != UNZ_OK) { lua_pushnil(L); lua_pushfstring(L, "zerror:open (%d)", err); return 2; }
 
-  p_zipentry zent = (p_zipentry) lua_newuserdata(L, sizeof(t_zipentry));
+  zent = (p_zipentry) lua_newuserdata(L, sizeof(t_zipentry));
   luaL_getmetatable(L, "LuaZ:UnZip:Entry");
   lua_setmetatable(L, -2);
 
@@ -205,10 +206,6 @@ int zipentry_open(lua_State* L)
 
   return 1;
 
- error:
-    lua_pushnil(L);
-    lua_pushstring(L, "error");
-    return 2;
 }
 
 static int zipentry_tostring(lua_State* L)
@@ -229,7 +226,9 @@ static int zipentry_tostring(lua_State* L)
 }
 
 
+#ifndef min
 #define min(X,Y) ((X)<(Y)?(X):(Y))
+#endif
 
 int
 zipentry_read(lua_State* L)
@@ -240,6 +239,7 @@ zipentry_read(lua_State* L)
   int read_line = 0;
   int top = lua_gettop(L);
   p_zipentry zent = (p_zipentry)luaL_checkudata(L, 1, "LuaZ:UnZip:Entry");
+  p_zipfile zip;
 
   if (!lua_isnumber(L, 2)) {
     const char *p= luaL_optstring(L, 2, "*l");
@@ -266,7 +266,7 @@ zipentry_read(lua_State* L)
     }
 
   lua_rawgeti(L, LUA_REGISTRYINDEX, zent->zipref);
-  p_zipfile zip = (p_zipfile)luaL_checkudata(L, -1, "LuaZ:UnZip");
+  zip = (p_zipfile)luaL_checkudata(L, -1, "LuaZ:UnZip");
   if (zip->uf == NULL)
     {
       lua_pushnil(L);
@@ -337,7 +337,6 @@ zipentry_read(lua_State* L)
   } else if (read_line) {
     int err = 0;
     luaL_Buffer buf;
-    char *raw;
     luaL_buffinit(L, &buf);
 
     do {
@@ -383,7 +382,6 @@ zipentry_read(lua_State* L)
     int err = 0;
     size_t n;
     luaL_Buffer buf;
-    char *raw;
     luaL_buffinit(L, &buf);
 
     do {
@@ -429,6 +427,7 @@ int push_fileinfo(lua_State* L, const char *name, unz_file_info *file_info)
 
   {
     struct tm newdate;
+    time_t t;
     tm_unz *date = &file_info->tmu_date;
     newdate.tm_sec = date->tm_sec;
     newdate.tm_min=date->tm_min;
@@ -440,7 +439,7 @@ int push_fileinfo(lua_State* L, const char *name, unz_file_info *file_info)
     else
       newdate.tm_year=date->tm_year ;
     newdate.tm_isdst=-1;
-    time_t t = mktime(&newdate);
+    t = mktime(&newdate);
 
     lua_pushnumber(L, t);
     lua_setfield(L, -2, "time");
@@ -453,15 +452,16 @@ int
 zipfile_list(lua_State* L)
 {
   p_zipfile zip = (p_zipfile)luaL_checkudata(L, 1, "LuaZ:UnZip");
+  uLong i;
+  unz_global_info gi;
+  int err;
+
   if (zip->uf == NULL) {
     lua_pushnil(L);
     lua_pushstring(L, "closed");
     return 2;
   }
 
-  uLong i;
-  unz_global_info gi;
-  int err;
 
   if (zip->current_nameref != LUA_NOREF) {
     err = unzCloseCurrentFile(zip->uf);
@@ -488,7 +488,6 @@ zipfile_list(lua_State* L)
       char filename_inzip[256];
       unz_file_info file_info;
       uLong ratio=0;
-      const char *string_method;
       char charCrypt=' ';
       err = unzGetCurrentFileInfo(zip->uf,&file_info,filename_inzip,sizeof(filename_inzip),NULL,0,NULL,0);
       if (err!=UNZ_OK) {
@@ -516,8 +515,6 @@ zipfile_list(lua_State* L)
 
   return 1;
 
- error:
-  return 0;
 }
 
 static int file_iter(lua_State* L)
@@ -662,8 +659,6 @@ static void registerlib (lua_State *L, const char *name,
 
 LUZ_API int luaopen_unzip(lua_State *L)
 {
-  int err;
-
   /* Register the functions and tables */
   luaL_newmetatable(L, "LuaZ:UnZip");
   luaL_register(L, NULL, zipfile_meta);
