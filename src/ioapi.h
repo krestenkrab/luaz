@@ -57,7 +57,7 @@
 #endif
 #ifdef _MSC_VER
  #define fopen64 fopen
- #if (_MSC_VER >= 1400) && (!(defined(NO_MSCVER_FILE64_FUNC)))
+#if (_MSC_VER >= 1400) && (!(defined(NO_MSCVER_FILE64_FUNC))) && (!defined(_WIN32_WCE))
   #define ftello64 _ftelli64
   #define fseeko64 _fseeki64
  #else // old MSC
