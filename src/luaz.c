@@ -83,17 +83,9 @@ int zipfile_open(lua_State* L)
     p_zipfile zip=NULL;
 
     const char *zipname = luaL_checkstring(L, 1);
+	printf("reading %s\n", zipname);
 
-#        ifdef USEWIN32IOAPI
-    zlib_filefunc_def ffunc;
-#        endif
-
-#        ifdef USEWIN32IOAPI
-    fill_win32_filefunc(&ffunc);
-    uf = unzOpen2(zipname,&ffunc);
-#        else
     uf = unzOpen(zipname);
-#        endif
 
     if (uf == NULL) {
       lua_pushnil(L);

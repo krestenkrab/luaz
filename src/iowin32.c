@@ -120,7 +120,7 @@ voidpf ZCALLBACK win32_open64_file_func (voidpf opaque,const void* filename,int 
     return win32_build_iowin(hFile);
 }
 
-
+#ifndef _UNICODE
 voidpf ZCALLBACK win32_open64_file_funcA (voidpf opaque,const void* filename,int mode)
 {
     const char* mode_fopen = NULL;
@@ -143,7 +143,7 @@ voidpf ZCALLBACK win32_open64_file_funcA (voidpf opaque,const void* filename,int
 
     return win32_build_iowin(hFile);
 }
-
+#endif
 
 voidpf ZCALLBACK win32_open64_file_funcW (voidpf opaque,const void* filename,int mode)
 {
@@ -434,7 +434,7 @@ void fill_win32_filefunc64(zlib_filefunc64_def* pzlib_filefunc_def)
     pzlib_filefunc_def->opaque = NULL;
 }
 
-
+#ifndef _UNICODE
 void fill_win32_filefunc64A(zlib_filefunc64_def* pzlib_filefunc_def)
 {
     pzlib_filefunc_def->zopen64_file = win32_open64_file_funcA;
@@ -446,7 +446,7 @@ void fill_win32_filefunc64A(zlib_filefunc64_def* pzlib_filefunc_def)
     pzlib_filefunc_def->zerror_file = win32_error_file_func;
     pzlib_filefunc_def->opaque = NULL;
 }
-
+#endif
 
 void fill_win32_filefunc64W(zlib_filefunc64_def* pzlib_filefunc_def)
 {
